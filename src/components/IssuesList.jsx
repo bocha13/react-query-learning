@@ -3,19 +3,24 @@ import { useState } from 'react'
 import { useQuery } from 'react-query'
 import { IssueItem } from './IssueItem'
 import fetchWithError from '../helpers/fetchWithError'
+import { Loader } from './Loader'
 
 export default function IssuesList({ labels, status }) {
   const [searchValue, setSearchValues] = useState('')
-  const issuesQuery = useQuery(['issues', { labels, status }], () => {
+  const issuesQuery = useQuery(['issues', { labels, status }], ({ signal }) => {
     const statusString = status ? `&status=${status}` : ''
     const labelsString = labels.map((label) => `labels[]=${label}`).join('&')
-    return fetchWithError(`/api/issues?${labelsString}${statusString}`)
+    return fetchWithError(`/api/issues?${labelsString}${statusString}`, {
+      signal,
+    })
   })
 
   const searchQuery = useQuery(
     ['issues', 'search', searchValue],
-    () => {
-      return fetchWithError(`/api/search/issues?q=${searchValue}`)
+    ({ signal }) => {
+      return fetch(`/api/search/issues?q=${searchValue}`, { signal }).then(
+        (res) => res.json()
+      )
     },
     {
       enabled: searchValue.length > 0,
@@ -45,7 +50,9 @@ export default function IssuesList({ labels, status }) {
           }}
         />
       </form>
-      <h2>Issues List</h2>
+      <h2>
+        Issues List {issuesQuery.fetchStatus === 'fetching' ? <Loader /> : null}
+      </h2>
       {issuesQuery.isLoading ? (
         <p>Loading...</p>
       ) : issuesQuery.isError ? (
